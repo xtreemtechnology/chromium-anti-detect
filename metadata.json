@@ -1,0 +1,6 @@
+{
+  "name": "Chromium Automation & CDP Engineering Studio",
+  "description": "Production-grade browser automation suite for Chromium, Electron, and CDP. Features isolated filesystem storage (--user-data-dir), per-profile proxy authentication tunnels, and strict state separation for Puppeteer and Playwright.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
