@@ -4,5 +4,6 @@ dist/
 coverage/
 .DS_Store
 *.log
+profile-catalog.json
 .env*
 !.env.example

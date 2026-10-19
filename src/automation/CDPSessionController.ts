@@ -121,6 +121,11 @@ window.chrome = { runtime: {}, loadTimes: () => {}, csi: () => {} };`,
    * Generates production stealth script to evaluate on new document
    */
   public static generateStealthEvaluationScript(config: FingerprintConfig): string {
+    const locale = JSON.stringify(config.locale);
+    const languages = JSON.stringify(config.languages);
+    const webglVendor = JSON.stringify(config.webglVendor);
+    const webglRenderer = JSON.stringify(config.webglRenderer);
+
     return `(() => {
   // 1. Strip navigator.webdriver
   ${config.maskWebDriver ? `
@@ -128,12 +133,12 @@ window.chrome = { runtime: {}, loadTimes: () => {}, csi: () => {} };`,
     get: () => undefined,
     configurable: true,
   });
-  delete (Object.getPrototypeOf(navigator) as any).webdriver;
+  delete Object.getPrototypeOf(navigator).webdriver;
   ` : ''}
 
   // 2. Mock Chrome runtime object
-  if (!(window as any).chrome) {
-    (window as any).chrome = {
+  if (!window.chrome) {
+    window.chrome = {
       app: { isInstalled: false, InstallState: { DISABLED: 'disabled' }, RunningState: { CANNOT_RUN: 'cannot_run' } },
       runtime: {
         OnInstalledReason: { CHROME_UPDATE: 'chrome_update', INSTALL: 'install' },
@@ -149,8 +154,8 @@ window.chrome = { runtime: {}, loadTimes: () => {}, csi: () => {} };`,
   Object.defineProperty(navigator, 'deviceMemory', { get: () => ${config.deviceMemory} });
 
   // 4. Languages override
-  Object.defineProperty(navigator, 'languages', { get: () => ${JSON.stringify(config.languages)} });
-  Object.defineProperty(navigator, 'language', { get: () => '${config.locale}' });
+  Object.defineProperty(navigator, 'languages', { get: () => ${languages} });
+  Object.defineProperty(navigator, 'language', { get: () => ${locale} });
 
   // 5. Canvas noise protection (subtle pixel jitter to defeat hash trackers without breaking render)
   ${config.noiseCanvas ? `
@@ -174,20 +179,20 @@ window.chrome = { runtime: {}, loadTimes: () => {}, csi: () => {} };`,
 
   // 6. WebGL Vendor / Renderer Spoofing
   const getParameter = WebGLRenderingContext.prototype.getParameter;
-  WebGLRenderingContext.prototype.getParameter = function (parameter: number) {
+  WebGLRenderingContext.prototype.getParameter = function (parameter) {
     if (parameter === 37445 /* UNMASKED_VENDOR_WEBGL */) {
-      return '${config.webglVendor}';
+      return ${webglVendor};
     }
     if (parameter === 37446 /* UNMASKED_RENDERER_WEBGL */) {
-      return '${config.webglRenderer}';
+      return ${webglRenderer};
     }
     return getParameter.apply(this, [parameter]);
   };
 
   const getParameter2 = WebGL2RenderingContext.prototype.getParameter;
-  WebGL2RenderingContext.prototype.getParameter = function (parameter: number) {
-    if (parameter === 37445) return '${config.webglVendor}';
-    if (parameter === 37446) return '${config.webglRenderer}';
+  WebGL2RenderingContext.prototype.getParameter = function (parameter) {
+    if (parameter === 37445) return ${webglVendor};
+    if (parameter === 37446) return ${webglRenderer};
     return getParameter2.apply(this, [parameter]);
   };
 })();`;

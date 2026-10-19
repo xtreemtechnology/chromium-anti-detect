@@ -5,13 +5,17 @@
  * and granular partition purging (Cookies, LevelDB, IndexedDB, Cache).
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
 import { BrowserProfile, StorageBucketItem } from './types';
 
 export class ProfileManager {
   private profiles: Map<string, BrowserProfile> = new Map();
+  private readonly catalogPath = path.resolve(process.env.PROFILE_CATALOG_PATH || 'profile-catalog.json');
 
   constructor() {
     this.seedDefaultProfiles();
+    this.loadCatalog();
   }
 
   /**
@@ -372,6 +376,7 @@ export class ProfileManager {
     };
 
     this.profiles.set(id, newProfile);
+    this.persistCatalog();
     return newProfile;
   }
 
@@ -386,11 +391,14 @@ export class ProfileManager {
     };
 
     this.profiles.set(id, updated);
+    this.persistCatalog();
     return updated;
   }
 
   public deleteProfile(id: string): boolean {
-    return this.profiles.delete(id);
+    const deleted = this.profiles.delete(id);
+    if (deleted) this.persistCatalog();
+    return deleted;
   }
 
   /**
@@ -401,11 +409,15 @@ export class ProfileManager {
     const profile = this.profiles.get(id);
     if (!profile) return { success: false, clearedFiles: [] };
 
-    const cleared = [
-      `${profile.userDataDir}/SingletonLock`,
-      `${profile.userDataDir}/SingletonCookie`,
-      `${profile.userDataDir}/SingletonSocket`,
-    ];
+    const userDataDir = this.runtimeUserDataDir(profile.id);
+    const cleared: string[] = [];
+    for (const lockFile of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) {
+      const lockPath = path.join(userDataDir, lockFile);
+      if (fs.existsSync(lockPath)) {
+        fs.rmSync(lockPath, { force: true });
+        cleared.push(lockPath);
+      }
+    }
 
     return {
       success: true,
@@ -426,10 +438,17 @@ export class ProfileManager {
       freed = bucket.sizeBytes;
       bucket.sizeBytes = 0;
       bucket.fileCount = 0;
+      const bucketPath = path.resolve(this.runtimeUserDataDir(profile.id), bucket.relativePath);
+      const userDataRoot = path.resolve(this.runtimeUserDataDir(profile.id));
+      if (bucketPath === userDataRoot || !bucketPath.startsWith(`${userDataRoot}${path.sep}`)) {
+        return { success: false, freedBytes: 0 };
+      }
+      fs.rmSync(bucketPath, { recursive: true, force: true });
     }
 
     profile.totalSizeBytes = Math.max(0, profile.totalSizeBytes - freed);
     profile.updatedAt = new Date().toISOString();
+    this.persistCatalog();
     return { success: true, freedBytes: freed };
   }
 
@@ -451,7 +470,51 @@ export class ProfileManager {
 
     profile.totalSizeBytes = Math.max(0, profile.totalSizeBytes - totalFreed);
     profile.updatedAt = new Date().toISOString();
+    const userDataDir = this.runtimeUserDataDir(profile.id);
+    for (const relativePath of ['Default/Network/Cookies', 'Default/Local Storage', 'Default/IndexedDB', 'Default/Cache']) {
+      fs.rmSync(path.join(userDataDir, relativePath), { recursive: true, force: true });
+    }
+    fs.rmSync(this.runtimeCacheDir(profile.id), { recursive: true, force: true });
+    this.persistCatalog();
     return { success: true, freedBytes: totalFreed };
+  }
+
+  private runtimeProfileRoot(profileId: string): string {
+    if (!/^[a-zA-Z0-9_-]+$/.test(profileId)) throw new Error('Invalid profile id');
+    return path.resolve(process.env.PROFILE_ROOT || path.join(process.cwd(), 'profiles_data'), profileId);
+  }
+
+  private runtimeUserDataDir(profileId: string): string {
+    return path.join(this.runtimeProfileRoot(profileId), 'user_data');
+  }
+
+  private runtimeCacheDir(profileId: string): string {
+    return path.join(this.runtimeProfileRoot(profileId), 'cache_data');
+  }
+
+  private loadCatalog(): void {
+    try {
+      const parsed: unknown = JSON.parse(fs.readFileSync(this.catalogPath, 'utf8'));
+      if (!Array.isArray(parsed)) return;
+      for (const profile of parsed) {
+        if (profile && typeof profile === 'object' && 'id' in profile && typeof profile.id === 'string') {
+          this.profiles.set(profile.id, profile as BrowserProfile);
+        }
+      }
+    } catch {
+      // A missing or invalid catalog should fall back to seeded profiles.
+    }
+  }
+
+  private persistCatalog(): void {
+    const profiles = this.getAllProfiles().map((profile) => ({
+      ...profile,
+      proxy: {
+        ...profile.proxy,
+        password: profile.proxy.password ? '••••••••••••••••' : undefined,
+      },
+    }));
+    fs.writeFileSync(this.catalogPath, JSON.stringify(profiles, null, 2), 'utf8');
   }
 }
 

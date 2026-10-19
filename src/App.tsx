@@ -13,9 +13,11 @@ import { ProxyLab } from './components/ProxyLab';
 import { CDPInspector } from './components/CDPInspector';
 import { StorageSanitizer } from './components/StorageSanitizer';
 import { CodeSynthesizer } from './components/CodeSynthesizer';
+import { BrowserWorkspace } from './components/BrowserWorkspace';
+import { apiFetch } from './api';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'profiles' | 'proxies' | 'cdp' | 'storage' | 'code'>('profiles');
+  const [activeTab, setActiveTab] = useState<'workspace' | 'profiles' | 'proxies' | 'cdp' | 'storage' | 'code'>('workspace');
   const [profiles, setProfiles] = useState<BrowserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -25,6 +27,7 @@ export default function App() {
 
   // Selected profile for code generation tab
   const [codeProfileId, setCodeProfileId] = useState<string | undefined>(undefined);
+  const [workspaceProfileId, setWorkspaceProfileId] = useState<string | undefined>(undefined);
 
   // Notification Banner
   const [notification, setNotification] = useState<string | null>(null);
@@ -35,7 +38,7 @@ export default function App() {
 
   const fetchProfiles = async () => {
     try {
-      const res = await fetch('/api/profiles');
+      const res = await apiFetch('/api/profiles');
       const data = await res.json();
       if (data.success) {
         setProfiles(data.data);
@@ -56,7 +59,7 @@ export default function App() {
     try {
       if (profileData.id) {
         // Update
-        const res = await fetch(`/api/profiles/${profileData.id}`, {
+        const res = await apiFetch(`/api/profiles/${profileData.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(profileData),
@@ -68,7 +71,7 @@ export default function App() {
         }
       } else {
         // Create
-        const res = await fetch('/api/profiles', {
+        const res = await apiFetch('/api/profiles', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(profileData),
@@ -87,7 +90,7 @@ export default function App() {
   const handleDeleteProfile = async (id: string) => {
     if (!confirm('Are you sure you want to delete this profile?')) return;
     try {
-      const res = await fetch(`/api/profiles/${id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/profiles/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (data.success) {
         showNotification('Profile deleted.');
@@ -105,7 +108,7 @@ export default function App() {
 
   const handleSanitizeLocks = async (id: string) => {
     try {
-      const res = await fetch(`/api/profiles/${id}/locks/sanitize`, { method: 'POST' });
+      const res = await apiFetch(`/api/profiles/${id}/locks/sanitize`, { method: 'POST' });
       const data = await res.json();
       if (data.success) {
         showNotification(`Sanitized ${data.clearedFiles.length} Chromium lock files for profile.`);
@@ -145,13 +148,25 @@ export default function App() {
       )}
 
       {/* Main Content Viewport */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-6">
+      <main className="flex-1 max-w-370 w-full mx-auto px-4 sm:px-6 py-5">
         {isLoading ? (
           <div className="p-16 text-center text-slate-500 text-xs">
             Loading Chromium profile environments...
           </div>
         ) : (
           <>
+            {activeTab === 'workspace' && (
+              <BrowserWorkspace
+                profiles={profiles}
+                selectedProfileId={workspaceProfileId}
+                onSelectProfile={setWorkspaceProfileId}
+                onEditProfile={(profile) => {
+                  setEditingProfile(profile);
+                  setIsModalOpen(true);
+                }}
+                onOpenTools={() => setActiveTab('profiles')}
+              />
+            )}
             {activeTab === 'profiles' && (
               <ProfileMatrix
                 profiles={profiles}
@@ -199,20 +214,19 @@ export default function App() {
         initialProfile={editingProfile}
       />
 
-      {/* Clean Unboxed Footer */}
       <footer className="border-t border-slate-800/80 bg-[#080c14] py-4 text-xs text-slate-400">
         <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span>Chromium DevTools &amp; Automation Architecture Engine</span>
+            <span>Field Browser workspace</span>
             <span aria-hidden="true">·</span>
-            <span className="font-mono text-emerald-400">Strict Filesystem Isolation</span>
+            <span className="font-mono text-cyan-300">Isolated profile session</span>
           </div>
           <div className="flex items-center gap-4 text-[11px] font-mono">
-            <span>Playwright PersistentContext</span>
+            <span>Persistent context</span>
             <span aria-hidden="true">·</span>
-            <span>Puppeteer CDP Session</span>
+            <span>Profile-aware routing</span>
             <span aria-hidden="true">·</span>
-            <span>Loopback CONNECT Forwarder</span>
+            <span>Operator tools</span>
           </div>
         </div>
       </footer>

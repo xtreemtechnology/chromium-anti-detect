@@ -1,9 +1,9 @@
 import React from 'react';
-import { Terminal, Plus, ShieldCheck } from 'lucide-react';
+import { Globe2, Plus } from 'lucide-react';
 
 interface HeaderProps {
-  activeTab: 'profiles' | 'proxies' | 'cdp' | 'storage' | 'code';
-  setActiveTab: (tab: 'profiles' | 'proxies' | 'cdp' | 'storage' | 'code') => void;
+  activeTab: 'workspace' | 'profiles' | 'proxies' | 'cdp' | 'storage' | 'code';
+  setActiveTab: (tab: 'workspace' | 'profiles' | 'proxies' | 'cdp' | 'storage' | 'code') => void;
   onNewProfile: () => void;
 }
 
@@ -13,65 +13,72 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onNewPr
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-8">
         {/* Zone 1: Brand wordmark (single line, no subtitle chips) */}
         <div className="flex items-center gap-3 shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-            <Terminal className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-lg bg-cyan-400/10 border border-cyan-300/30 flex items-center justify-center text-cyan-300">
+            <Globe2 className="w-4 h-4" />
           </div>
-          <span className="text-base font-semibold tracking-tight text-slate-100 whitespace-nowrap">
-            Chromium CDP Automation Studio
-          </span>
+          <button onClick={() => setActiveTab('workspace')} className="text-base font-semibold tracking-tight text-slate-100 whitespace-nowrap">
+            Field Browser
+          </button>
+          <span className="text-[10px] font-mono uppercase tracking-[0.14em] text-slate-500 hidden lg:inline">Profile workspace</span>
         </div>
 
-        {/* Zone 2: 5 clean single-line nav links with hover underlines / active indicators */}
-        <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+        <nav className="hidden md:flex items-center gap-1 text-xs font-medium">
+          <button
+            onClick={() => setActiveTab('workspace')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${activeTab === 'workspace' ? 'bg-slate-800 text-slate-100' : 'text-slate-500 hover:text-slate-200'}`}
+          >
+            <Globe2 size={14} /> Browser
+          </button>
+          <span className="w-px h-5 bg-slate-800 mx-2" />
           <button
             onClick={() => setActiveTab('profiles')}
-            className={`whitespace-nowrap transition-colors py-1 border-b-2 ${
+            className={`whitespace-nowrap transition-colors px-3 py-2 rounded-md ${
               activeTab === 'profiles'
-                ? 'text-emerald-400 border-emerald-400 font-semibold'
-                : 'text-slate-400 hover:text-slate-200 border-transparent'
+                ? 'text-cyan-300 bg-slate-800 font-semibold'
+                : 'text-slate-500 hover:text-slate-200'
             }`}
           >
-            Profile Fleet
+            Profiles
           </button>
           <button
             onClick={() => setActiveTab('proxies')}
-            className={`whitespace-nowrap transition-colors py-1 border-b-2 ${
+            className={`whitespace-nowrap transition-colors px-3 py-2 rounded-md ${
               activeTab === 'proxies'
-                ? 'text-emerald-400 border-emerald-400 font-semibold'
-                : 'text-slate-400 hover:text-slate-200 border-transparent'
+                ? 'text-cyan-300 bg-slate-800 font-semibold'
+                : 'text-slate-500 hover:text-slate-200'
             }`}
           >
-            Proxy Tunnels &amp; Auth
+            Proxy
           </button>
           <button
             onClick={() => setActiveTab('cdp')}
-            className={`whitespace-nowrap transition-colors py-1 border-b-2 ${
+            className={`whitespace-nowrap transition-colors px-3 py-2 rounded-md ${
               activeTab === 'cdp'
-                ? 'text-emerald-400 border-emerald-400 font-semibold'
-                : 'text-slate-400 hover:text-slate-200 border-transparent'
+                ? 'text-cyan-300 bg-slate-800 font-semibold'
+                : 'text-slate-500 hover:text-slate-200'
             }`}
           >
-            CDP Protocol Inspector
+            CDP
           </button>
           <button
             onClick={() => setActiveTab('storage')}
-            className={`whitespace-nowrap transition-colors py-1 border-b-2 ${
+            className={`whitespace-nowrap transition-colors px-3 py-2 rounded-md ${
               activeTab === 'storage'
-                ? 'text-emerald-400 border-emerald-400 font-semibold'
-                : 'text-slate-400 hover:text-slate-200 border-transparent'
+                ? 'text-cyan-300 bg-slate-800 font-semibold'
+                : 'text-slate-500 hover:text-slate-200'
             }`}
           >
-            Storage &amp; Locks
+            Storage
           </button>
           <button
             onClick={() => setActiveTab('code')}
-            className={`whitespace-nowrap transition-colors py-1 border-b-2 ${
+            className={`whitespace-nowrap transition-colors px-3 py-2 rounded-md ${
               activeTab === 'code'
-                ? 'text-emerald-400 border-emerald-400 font-semibold'
-                : 'text-slate-400 hover:text-slate-200 border-transparent'
+                ? 'text-cyan-300 bg-slate-800 font-semibold'
+                : 'text-slate-500 hover:text-slate-200'
             }`}
           >
-            Code Synthesizer &amp; Runner
+            Code
           </button>
         </nav>
 
@@ -79,7 +86,7 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, onNewPr
         <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={onNewProfile}
-            className="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-md bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-colors whitespace-nowrap shadow-sm cursor-pointer"
+            className="flex items-center gap-2 px-3.5 py-1.5 text-xs font-semibold rounded-md bg-cyan-300 hover:bg-cyan-200 text-slate-950 transition-colors whitespace-nowrap shadow-sm cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Create Profile</span>

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserProfile, StorageBucketItem } from '../automation/types';
+import { apiFetch } from '../api';
 import {
   HardDrive,
   Trash2,
@@ -51,7 +52,7 @@ export const StorageSanitizer: React.FC<StorageSanitizerProps> = ({
     setPurgeFeedback(null);
 
     try {
-      const res = await fetch(`/api/profiles/${selectedProfile.id}/storage/purge`, {
+      const res = await apiFetch(`/api/profiles/${selectedProfile.id}/storage/purge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bucketId }),
@@ -74,7 +75,7 @@ export const StorageSanitizer: React.FC<StorageSanitizerProps> = ({
     setPurgeFeedback(null);
 
     try {
-      const res = await fetch(`/api/profiles/${selectedProfile.id}/storage/purge`, {
+      const res = await apiFetch(`/api/profiles/${selectedProfile.id}/storage/purge`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fullReset: true }),
@@ -97,7 +98,7 @@ export const StorageSanitizer: React.FC<StorageSanitizerProps> = ({
     setPurgeFeedback(null);
 
     try {
-      const res = await fetch(`/api/profiles/${selectedProfile.id}/locks/sanitize`, {
+      const res = await apiFetch(`/api/profiles/${selectedProfile.id}/locks/sanitize`, {
         method: 'POST',
       });
       const data = await res.json();

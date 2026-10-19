@@ -15,6 +15,8 @@
  */
 
 import { ProxyConfig } from './types';
+import net from 'node:net';
+import tls from 'node:tls';
 
 export interface ProxyTunnelInstance {
   tunnelId: string;
@@ -205,17 +207,15 @@ export async function attachCDPProxyAuth(cdpSession: CDPSession, credentials: { 
     const startTime = Date.now();
 
     try {
-      // In a real Node environment, we can perform an HTTP CONNECT handshake
-      // Here we simulate a verified latency check with realistic TCP socket timing
-      await new Promise(r => setTimeout(r, 80 + Math.floor(Math.random() * 40)));
-      const latencyMs = Date.now() - startTime;
-
+      if (config.protocol === 'socks5') {
+        await this.testSocks5(config);
+      } else {
+        await this.testHttpConnect(config);
+      }
       return {
         success: true,
-        latencyMs,
-        exitIp: config.exitIp || '198.51.100.42',
-        countryCode: config.countryCode || 'US',
-        details: `Proxy tunnel established successfully. Basic auth accepted on ${config.host}:${config.port}. Upstream RTT: ${latencyMs}ms.`,
+        latencyMs: Date.now() - startTime,
+        details: `Proxy ${config.protocol.toUpperCase()} handshake succeeded on ${config.host}:${config.port}. Exit IP was not inferred without an explicit egress probe.`,
       };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -225,6 +225,91 @@ export async function attachCDPProxyAuth(cdpSession: CDPSession, credentials: { 
         details: `Proxy handshake failed: ${msg}`,
       };
     }
+  }
+
+  private testHttpConnect(config: ProxyConfig): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const socket = config.protocol === 'https'
+        ? tls.connect({ host: config.host, port: config.port, servername: config.host, rejectUnauthorized: true })
+        : net.connect({ host: config.host, port: config.port });
+      const timeout = setTimeout(() => {
+        socket.destroy();
+        reject(new Error('Proxy connection timed out'));
+      }, 8000);
+      const auth = config.username && config.password && !config.password.startsWith('••')
+        ? `Proxy-Authorization: Basic ${Buffer.from(`${config.username}:${config.password}`).toString('base64')}\r\n`
+        : '';
+      let response = '';
+      socket.once('connect', () => {
+        socket.write(`CONNECT example.com:443 HTTP/1.1\r\nHost: example.com:443\r\n${auth}Connection: close\r\n\r\n`);
+      });
+      socket.on('data', (chunk) => {
+        response += chunk.toString('latin1');
+        if (!response.includes('\r\n\r\n')) return;
+        clearTimeout(timeout);
+        const status = /^HTTP\/\d\.\d\s+(\d+)/.exec(response)?.[1];
+        socket.destroy();
+        if (status === '200') resolve();
+        else reject(new Error(`Proxy CONNECT rejected with HTTP ${status || 'unknown'}`));
+      });
+      socket.once('error', (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+    });
+  }
+
+  private testSocks5(config: ProxyConfig): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const socket = net.connect({ host: config.host, port: config.port });
+      const timeout = setTimeout(() => {
+        socket.destroy();
+        reject(new Error('SOCKS5 connection timed out'));
+      }, 8000);
+      socket.once('connect', () => {
+        const hasAuth = Boolean(config.username && config.password && !config.password.startsWith('••'));
+        socket.write(Buffer.from([5, hasAuth ? 2 : 0]));
+      });
+      socket.once('data', (method) => {
+        if (method[0] !== 5 || method[1] === 255) {
+          clearTimeout(timeout);
+          socket.destroy();
+          reject(new Error('SOCKS5 authentication negotiation failed'));
+          return;
+        }
+        if (method[1] === 2) {
+          const username = Buffer.from(config.username || '');
+          const password = Buffer.from(config.password || '');
+          socket.write(Buffer.concat([Buffer.from([1, username.length]), username, Buffer.from([password.length]), password]));
+          socket.once('data', (authResult) => {
+            if (authResult[1] !== 0) {
+              clearTimeout(timeout);
+              socket.destroy();
+              reject(new Error('SOCKS5 proxy authentication rejected'));
+              return;
+            }
+            this.writeSocksConnect(socket, timeout, resolve, reject);
+          });
+        } else {
+          this.writeSocksConnect(socket, timeout, resolve, reject);
+        }
+      });
+      socket.once('error', (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+    });
+  }
+
+  private writeSocksConnect(socket: net.Socket, timeout: NodeJS.Timeout, resolve: () => void, reject: (error: Error) => void): void {
+    const host = Buffer.from('example.com');
+    socket.write(Buffer.concat([Buffer.from([5, 1, 0, 3, host.length]), host, Buffer.from([0, 443 >> 8, 443 & 255])]));
+    socket.once('data', (result) => {
+      clearTimeout(timeout);
+      socket.destroy();
+      if (result[1] === 0) resolve();
+      else reject(new Error(`SOCKS5 CONNECT rejected with code ${result[1]}`));
+    });
   }
 }
 

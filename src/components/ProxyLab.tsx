@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ProxyConfig, ProxyProtocol, ProxyAuthMethod } from '../automation/types';
+import { apiFetch } from '../api';
 import { ProxyTunnelManager } from '../automation/ProxyTunnelManager';
 import {
   Globe,
@@ -39,7 +40,7 @@ export const ProxyLab: React.FC = () => {
     setTestResult(null);
 
     try {
-      const res = await fetch('/api/proxy/test', {
+      const res = await apiFetch('/api/proxy/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

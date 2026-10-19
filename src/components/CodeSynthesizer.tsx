@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserProfile, AutomationFramework } from '../automation/types';
+import { apiFetch } from '../api';
 import {
   Code,
   Terminal,
@@ -67,7 +68,7 @@ export const CodeSynthesizer: React.FC<CodeSynthesizerProps> = ({
     if (!selectedProfileId) return;
 
     try {
-      const res = await fetch('/api/code/generate', {
+      const res = await apiFetch('/api/code/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -117,7 +118,7 @@ export const CodeSynthesizer: React.FC<CodeSynthesizerProps> = ({
     setActiveRun(null);
 
     try {
-      const res = await fetch('/api/workflow/simulate', {
+      const res = await apiFetch('/api/workflow/simulate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

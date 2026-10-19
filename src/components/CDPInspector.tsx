@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CDPLogEntry } from '../automation/types';
+import { apiFetch } from '../api';
 import {
   Terminal,
   Play,
@@ -100,7 +101,7 @@ export const CDPInspector: React.FC = () => {
 
   const fetchLogs = async () => {
     try {
-      const res = await fetch('/api/cdp/logs');
+      const res = await apiFetch('/api/cdp/logs');
       const data = await res.json();
       if (data.success) {
         setLogs(data.data);
@@ -131,7 +132,7 @@ export const CDPInspector: React.FC = () => {
     }
 
     try {
-      const res = await fetch('/api/cdp/execute', {
+      const res = await apiFetch('/api/cdp/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
